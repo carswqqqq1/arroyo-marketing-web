@@ -53,6 +53,7 @@
   if (form) {
     const params = new URLSearchParams(window.location.search);
     const successPanel = document.querySelector("[data-success-panel]");
+    const statusNode = document.querySelector("[data-form-status]");
 
     if (params.get("submitted") === "1" && successPanel) {
       successPanel.classList.add("is-visible");
@@ -74,6 +75,57 @@
       const field = form.querySelector(`[name="${name}"]`);
       if (field) {
         field.value = value;
+      }
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      const endpoint = form.getAttribute("data-lead-endpoint");
+      if (!endpoint) {
+        form.submit();
+        return;
+      }
+
+      const submitButton = form.querySelector('button[type="submit"]');
+      const payload = Object.fromEntries(new FormData(form).entries());
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Submitting...";
+      }
+
+      if (statusNode) {
+        statusNode.textContent = "";
+      }
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error("Lead submission failed");
+        }
+
+        const nextUrl = new URL(form.getAttribute("action") || window.location.href, window.location.origin);
+        window.location.assign(nextUrl.toString());
+      } catch (error) {
+        if (statusNode) {
+          statusNode.textContent = "Submission failed. Call or email and we can still get your audit started.";
+        }
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Get a Free Website Audit";
+        }
       }
     });
   }

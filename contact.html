@@ -111,6 +111,7 @@
               method="POST"
               action="contact.html?submitted=1#audit-form"
               data-netlify="true"
+              data-lead-endpoint="/.netlify/functions/submit-lead"
               netlify-honeypot="company-website"
             >
               <input type="hidden" name="form-name" value="website-audit" />
@@ -170,6 +171,7 @@
 
               <button class="btn btn-primary" type="submit">Get a Free Website Audit</button>
               <p class="form-note">No pressure. We’ll take a quick look and show you what may be helping or hurting conversions.</p>
+              <p class="form-status" data-form-status aria-live="polite"></p>
             </form>
           </div>
 

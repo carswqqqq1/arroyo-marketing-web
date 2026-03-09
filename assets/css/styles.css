@@ -553,6 +553,12 @@ textarea {
   font-size: 0.9rem;
 }
 
+.form-status {
+  margin-top: 0.85rem;
+  font-size: 0.92rem;
+  color: #7d3d1b;
+}
+
 .success-panel {
   display: none;
   margin-bottom: 1rem;
