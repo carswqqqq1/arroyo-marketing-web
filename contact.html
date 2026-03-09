@@ -6,8 +6,32 @@
     <title>Contact | Arroyo Marketing</title>
     <meta
       name="description"
-      content="Contact Arroyo Marketing for a free website audit and lead-generation strategy review."
+      content="Contact Arroyo Marketing for a free website audit, direct call access, or a Calendly booking to review your current site."
     />
+    <link rel="canonical" href="https://arroyo-marketing-0307084718.netlify.app/contact.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Contact | Arroyo Marketing" />
+    <meta
+      property="og:description"
+      content="Reach out for a free website audit and a practical review of what may be helping or hurting conversions."
+    />
+    <meta property="og:url" content="https://arroyo-marketing-0307084718.netlify.app/contact.html" />
+    <meta
+      property="og:image"
+      content="https://arroyo-marketing-0307084718.netlify.app/assets/images/logos/arroyo-logo-light-bg.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Contact | Arroyo Marketing" />
+    <meta
+      name="twitter:description"
+      content="Reach out for a free website audit and a practical review of what may be helping or hurting conversions."
+    />
+    <meta
+      name="twitter:image"
+      content="https://arroyo-marketing-0307084718.netlify.app/assets/images/logos/arroyo-logo-light-bg.png"
+    />
+    <link rel="icon" type="image/png" href="assets/images/logos/arroyo-logo-light-bg.png" />
+    <link rel="apple-touch-icon" href="assets/images/logos/arroyo-logo-light-bg.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,12 +39,25 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="assets/css/styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        "name": "Arroyo Marketing",
+        "url": "https://arroyo-marketing-0307084718.netlify.app/contact.html",
+        "telephone": "+1-480-339-9585",
+        "email": "hello@arroyomarketing.co",
+        "description": "Premium websites and lead systems for local service businesses."
+      }
+    </script>
   </head>
   <body>
     <div class="top-bar">
       <div class="container">
         <span>Questions? Call</span>
         <a href="tel:+14803399585">(480) 339-9585</a>
+        <span>|</span>
+        <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
       </div>
     </div>
 
@@ -29,7 +66,6 @@
         <a class="logo-link" href="index.html" aria-label="Arroyo Marketing home">
           <img class="logo" src="assets/images/logos/arroyo-logo-dark.png" alt="Arroyo Marketing logo" />
         </a>
-
         <div class="nav-wrap">
           <button class="menu-toggle" type="button" aria-expanded="false" data-menu-toggle>Menu</button>
           <nav class="main-nav" aria-label="Main" data-main-nav>
@@ -49,15 +85,11 @@
         <div class="container page-title-block reveal">
           <span class="hero-badge">Contact</span>
           <h1>Let’s Talk About Your Website</h1>
-          <p class="lead">If you want a cleaner, more effective website that helps bring in more business, reach out.</p>
+          <p class="lead">
+            If you want a cleaner, more effective website that helps bring in more business, start with a quick audit or book a call directly.
+          </p>
           <div class="btn-row">
-            <a
-              class="btn btn-secondary"
-              href="https://calendly.com/carson-elevatemarketing/new-meeting"
-              target="_blank"
-              rel="noopener noreferrer"
-              >Book a Call</a
-            >
+            <a class="btn btn-secondary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
             <a class="btn btn-primary" href="#audit-form">Get a Free Website Audit</a>
           </div>
         </div>
@@ -66,64 +98,101 @@
       <section class="section section-tight" id="audit-form">
         <div class="container contact-layout reveal">
           <div class="contact-form">
-            <h2>Get a Free Website Audit</h2>
-            <p>Tell us a little about your business and what you need help with.</p>
+            <div class="success-panel" data-success-panel>
+              <h2>Request received</h2>
+              <p>Thanks for reaching out. We’ll take a quick look and follow up with the next steps after reviewing your site.</p>
+            </div>
 
-            <form name="website-audit" method="POST" data-netlify="true" netlify-honeypot="company-website">
+            <h2>Get a Free Website Audit</h2>
+            <p class="lead-note">Tell us a little about your business and what you need help with.</p>
+
+            <form
+              name="website-audit"
+              method="POST"
+              action="contact.html?submitted=1#audit-form"
+              data-netlify="true"
+              netlify-honeypot="company-website"
+            >
               <input type="hidden" name="form-name" value="website-audit" />
+              <input type="hidden" name="source_page" value="" />
+              <input type="hidden" name="current_path" value="" />
+              <input type="hidden" name="utm_source" value="" />
+              <input type="hidden" name="utm_medium" value="" />
+              <input type="hidden" name="utm_campaign" value="" />
+              <input type="hidden" name="utm_term" value="" />
+              <input type="hidden" name="utm_content" value="" />
               <p hidden>
                 <label>
                   Do not fill this out: <input name="company-website" />
                 </label>
               </p>
 
-              <div class="field">
-                <label for="name">Name</label>
-                <input id="name" name="name" type="text" required />
+              <div class="field-grid">
+                <div class="field">
+                  <label for="name">Name</label>
+                  <input id="name" name="name" type="text" autocomplete="name" autocapitalize="words" required />
+                </div>
+
+                <div class="field">
+                  <label for="business-name">Business Name</label>
+                  <input
+                    id="business-name"
+                    name="business-name"
+                    type="text"
+                    autocomplete="organization"
+                    autocapitalize="words"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="field-grid">
+                <div class="field">
+                  <label for="email">Email</label>
+                  <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required />
+                </div>
+
+                <div class="field">
+                  <label for="phone">Phone</label>
+                  <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required />
+                </div>
               </div>
 
               <div class="field">
-                <label for="business-name">Business Name</label>
-                <input id="business-name" name="business-name" type="text" required />
-              </div>
-
-              <div class="field">
-                <label for="email">Email</label>
-                <input id="email" name="email" type="email" required />
-              </div>
-
-              <div class="field">
-                <label for="phone">Phone</label>
-                <input id="phone" name="phone" type="tel" required />
-              </div>
-
-              <div class="field">
-                <label for="website-url">Website URL</label>
-                <input id="website-url" name="website-url" type="url" placeholder="https://" />
+                <label for="website-url">Current Website URL</label>
+                <input id="website-url" name="website-url" type="url" inputmode="url" placeholder="https://" />
               </div>
 
               <div class="field">
                 <label for="help-needed">What kind of help do you need?</label>
-                <textarea id="help-needed" name="help-needed" required></textarea>
+                <textarea id="help-needed" name="help-needed" autocapitalize="sentences" required></textarea>
               </div>
 
               <button class="btn btn-primary" type="submit">Get a Free Website Audit</button>
+              <p class="form-note">No pressure. We’ll take a quick look and show you what may be helping or hurting conversions.</p>
             </form>
           </div>
 
           <aside class="card">
             <p class="kicker">Direct Contact</p>
-            <h3>Email</h3>
-            <p><a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a></p>
-            <h3>Phone</h3>
-            <p><a href="tel:+14803399585">(480) 339-9585</a></p>
-            <h3>Book instantly</h3>
-            <p>
-              <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer"
-                >Schedule with Calendly</a
-              >
-            </p>
-            <p class="note">No pressure. Just a quick look at where your current site may be helping or costing you leads.</p>
+            <h2>Prefer to reach out directly?</h2>
+            <div class="contact-options">
+              <div class="contact-option">
+                <h3>Call</h3>
+                <p><a href="tel:+14803399585">(480) 339-9585</a></p>
+              </div>
+              <div class="contact-option">
+                <h3>Email</h3>
+                <p><a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a></p>
+              </div>
+              <div class="contact-option">
+                <h3>Book instantly</h3>
+                <p>
+                  <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Schedule with Calendly</a>
+                </p>
+              </div>
+            </div>
+            <p class="note">Most audit requests get a quick review first, then a follow-up on what looks strongest and what should be fixed next.</p>
           </aside>
         </div>
       </section>
@@ -136,7 +205,6 @@
             <img class="footer-logo" src="assets/images/logos/arroyo-logo-dark.png" alt="Arroyo Marketing logo" />
             <p>Premium websites and lead systems for local service businesses.</p>
           </div>
-
           <nav class="footer-nav" aria-label="Footer links">
             <a href="index.html">Home</a>
             <a href="services.html">Services</a>
@@ -144,17 +212,21 @@
             <a href="about.html">About</a>
             <a href="contact.html">Contact</a>
           </nav>
-
           <div class="footer-contact">
             <a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a>
             <a href="tel:+14803399585">(480) 339-9585</a>
             <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
           </div>
         </div>
-
         <div class="footer-bottom">&copy; <span data-year></span> Arroyo Marketing. All rights reserved.</div>
       </div>
     </footer>
+
+    <div class="mobile-cta-bar">
+      <a class="btn btn-soft" href="tel:+14803399585">Call</a>
+      <a class="btn btn-secondary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book</a>
+      <a class="btn btn-primary" href="#audit-form">Audit</a>
+    </div>
 
     <script src="assets/js/script.js"></script>
   </body>

@@ -1,45 +1,44 @@
 (function () {
-  const menuButton = document.querySelector('[data-menu-toggle]');
-  const nav = document.querySelector('[data-main-nav]');
+  const menuButton = document.querySelector("[data-menu-toggle]");
+  const nav = document.querySelector("[data-main-nav]");
 
   if (menuButton && nav) {
-    menuButton.addEventListener('click', () => {
-      const expanded = menuButton.getAttribute('aria-expanded') === 'true';
-      menuButton.setAttribute('aria-expanded', String(!expanded));
-      nav.classList.toggle('open', !expanded);
-      menuButton.textContent = expanded ? 'Menu' : 'Close';
+    menuButton.addEventListener("click", () => {
+      const expanded = menuButton.getAttribute("aria-expanded") === "true";
+      menuButton.setAttribute("aria-expanded", String(!expanded));
+      nav.classList.toggle("open", !expanded);
+      menuButton.textContent = expanded ? "Menu" : "Close";
     });
 
-    nav.querySelectorAll('a').forEach((link) => {
-      link.addEventListener('click', () => {
-        nav.classList.remove('open');
-        menuButton.setAttribute('aria-expanded', 'false');
-        menuButton.textContent = 'Menu';
+    nav.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        nav.classList.remove("open");
+        menuButton.setAttribute("aria-expanded", "false");
+        menuButton.textContent = "Menu";
       });
     });
   }
 
-  const currentPath = window.location.pathname.split('/').pop() || 'index.html';
-  const navLinks = document.querySelectorAll('[data-main-nav] a');
-  navLinks.forEach((link) => {
-    const linkPath = link.getAttribute('href');
+  const currentPath = window.location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll("[data-main-nav] a").forEach((link) => {
+    const linkPath = link.getAttribute("href");
     if (linkPath === currentPath) {
-      link.setAttribute('aria-current', 'page');
+      link.setAttribute("aria-current", "page");
     }
   });
 
-  const yearNode = document.querySelector('[data-year]');
+  const yearNode = document.querySelector("[data-year]");
   if (yearNode) {
     yearNode.textContent = String(new Date().getFullYear());
   }
 
-  const revealItems = document.querySelectorAll('.reveal');
+  const revealItems = document.querySelectorAll(".reveal");
   if (revealItems.length) {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
+            entry.target.classList.add("is-visible");
             observer.unobserve(entry.target);
           }
         });
@@ -48,5 +47,34 @@
     );
 
     revealItems.forEach((item) => observer.observe(item));
+  }
+
+  const form = document.querySelector('form[name="website-audit"]');
+  if (form) {
+    const params = new URLSearchParams(window.location.search);
+    const successPanel = document.querySelector("[data-success-panel]");
+
+    if (params.get("submitted") === "1" && successPanel) {
+      successPanel.classList.add("is-visible");
+      successPanel.setAttribute("tabindex", "-1");
+      successPanel.focus();
+    }
+
+    const hiddenValues = {
+      source_page: window.location.pathname,
+      current_path: window.location.pathname + window.location.search,
+      utm_source: params.get("utm_source") || "",
+      utm_medium: params.get("utm_medium") || "",
+      utm_campaign: params.get("utm_campaign") || "",
+      utm_term: params.get("utm_term") || "",
+      utm_content: params.get("utm_content") || ""
+    };
+
+    Object.entries(hiddenValues).forEach(([name, value]) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field) {
+        field.value = value;
+      }
+    });
   }
 })();
