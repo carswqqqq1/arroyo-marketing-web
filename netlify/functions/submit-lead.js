@@ -102,7 +102,8 @@ exports.handler = async function handler(event) {
   } catch (error) {
     return json(500, {
       ok: false,
-      error: "submission_failed"
+      error: "submission_failed",
+      message: error.message
     });
   }
 };
