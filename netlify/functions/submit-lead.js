@@ -93,7 +93,7 @@ async function getAccessToken() {
   return payload.access_token;
 }
 
-async function fetchSiteHtml(url, redirectCount = 0) {
+async function fetchSiteHtml(url, redirectCount = 0, allowInsecure = false) {
   if (redirectCount > 5) {
     throw new Error("Too many redirects");
   }
@@ -108,14 +108,15 @@ async function fetchSiteHtml(url, redirectCount = 0) {
         headers: {
           "User-Agent": "ArroyoMarketingAuditBot/1.0 (+https://arroyomarketing.com)",
           Accept: "text/html,application/xhtml+xml"
-        }
+        },
+        rejectUnauthorized: !allowInsecure
       },
       (response) => {
         const location = response.headers.location;
         if (location && response.statusCode >= 300 && response.statusCode < 400) {
           response.resume();
           const nextUrl = new URL(location, currentUrl).toString();
-          fetchSiteHtml(nextUrl, redirectCount + 1).then(resolve).catch(reject);
+          fetchSiteHtml(nextUrl, redirectCount + 1, allowInsecure).then(resolve).catch(reject);
           return;
         }
 
@@ -136,7 +137,20 @@ async function fetchSiteHtml(url, redirectCount = 0) {
       request.destroy(new Error("Site fetch timed out"));
     });
 
-    request.on("error", reject);
+    request.on("error", (error) => {
+      if (
+        !allowInsecure &&
+        currentUrl.protocol === "https:" &&
+        /(local issuer certificate|unable to verify the first certificate|self[- ]signed certificate)/i.test(
+          error.message || ""
+        )
+      ) {
+        fetchSiteHtml(currentUrl.toString(), redirectCount, true).then(resolve).catch(reject);
+        return;
+      }
+
+      reject(error);
+    });
   });
 }
 
