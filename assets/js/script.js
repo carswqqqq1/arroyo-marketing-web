@@ -54,6 +54,12 @@
     const params = new URLSearchParams(window.location.search);
     const successPanel = document.querySelector("[data-success-panel]");
     const statusNode = document.querySelector("[data-form-status]");
+    const auditResults = document.querySelector("[data-audit-results]");
+    const auditHeadline = document.querySelector("[data-audit-headline]");
+    const auditScore = document.querySelector("[data-audit-score]");
+    const auditSummary = document.querySelector("[data-audit-summary]");
+    const auditStrengths = document.querySelector("[data-audit-strengths]");
+    const auditWins = document.querySelector("[data-audit-wins]");
 
     if (params.get("submitted") === "1" && successPanel) {
       successPanel.classList.add("is-visible");
@@ -78,6 +84,43 @@
       }
     });
 
+    function renderList(node, items) {
+      if (!node) return;
+      node.innerHTML = "";
+      const listItems = items && items.length ? items : ["No automated notes yet. We can review it manually."];
+      listItems.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        node.appendChild(li);
+      });
+    }
+
+    function renderAudit(audit) {
+      if (!audit || !auditResults) return;
+      auditResults.hidden = false;
+      if (auditHeadline) auditHeadline.textContent = audit.headline || "Audit ready";
+      if (auditScore) auditScore.textContent = String(audit.score || 0);
+      if (auditSummary) auditSummary.textContent = audit.summary || "";
+      renderList(auditStrengths, audit.strengths);
+      renderList(auditWins, audit.quickWins);
+      auditResults.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function saveNetlifyCopy(formData) {
+      const encoded = new URLSearchParams();
+      formData.forEach((value, key) => {
+        encoded.append(key, String(value));
+      });
+
+      return fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: encoded.toString()
+      });
+    }
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
@@ -92,7 +135,9 @@
       }
 
       const submitButton = form.querySelector('button[type="submit"]');
-      const payload = Object.fromEntries(new FormData(form).entries());
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+      const backupPromise = saveNetlifyCopy(formData).catch(() => null);
 
       if (submitButton) {
         submitButton.disabled = true;
@@ -116,11 +161,47 @@
           throw new Error("Lead submission failed");
         }
 
-        const nextUrl = new URL(form.getAttribute("action") || window.location.href, window.location.origin);
-        window.location.assign(nextUrl.toString());
-      } catch (error) {
+        const result = await response.json();
+        await backupPromise;
+
+        if (successPanel) {
+          successPanel.classList.add("is-visible");
+          successPanel.setAttribute("tabindex", "-1");
+          successPanel.focus();
+        }
+
+        if (result.audit) {
+          renderAudit(result.audit);
+        }
+
         if (statusNode) {
-          statusNode.textContent = "Submission failed. Call or email and we can still get your audit started.";
+          const delivery = result.delivery || {};
+          if (delivery.owner === "sent" && delivery.client === "sent") {
+            statusNode.textContent = "Inquiry saved. Owner alert and client audit email were both sent.";
+          } else if (delivery.owner === "sent" || delivery.client === "sent") {
+            statusNode.textContent = "Inquiry saved. One email was sent and the other is waiting on mail setup.";
+          } else {
+            statusNode.textContent = "Inquiry saved and audit generated.";
+          }
+        }
+
+        form.reset();
+        Object.entries(hiddenValues).forEach(([name, value]) => {
+          const field = form.querySelector(`[name="${name}"]`);
+          if (field) {
+            field.value = value;
+          }
+        });
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Get a Free Website Audit";
+        }
+      } catch (error) {
+        const backupResponse = await backupPromise;
+        if (statusNode) {
+          statusNode.textContent = backupResponse && backupResponse.ok
+            ? "Your request was saved, but the instant audit hit a backend issue. We can still follow up manually."
+            : "Submission failed. Call or email and we can still get your audit started.";
         }
         if (submitButton) {
           submitButton.disabled = false;

@@ -81,30 +81,42 @@
     </header>
 
     <main>
-      <section class="page-hero">
-        <div class="container page-title-block reveal">
-          <span class="hero-badge">Contact</span>
-          <h1>Let’s Talk About Your Website</h1>
-          <p class="lead">
-            If you want a cleaner, more effective website that helps bring in more business, start with a quick audit or book a call directly.
-          </p>
-          <div class="btn-row">
-            <a class="btn btn-secondary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
-            <a class="btn btn-primary" href="#audit-form">Get a Free Website Audit</a>
+      <section class="page-hero audit-hero">
+        <div class="container page-hero-grid">
+          <div class="page-title-block reveal">
+            <span class="hero-badge">Audit Tool</span>
+            <h1>Get a free website audit with a real instant snapshot.</h1>
+            <p class="lead">
+              Drop in your website, tell us what is not working, and we will generate an automated first-pass audit while your inquiry gets logged for follow-up.
+            </p>
+            <div class="btn-row">
+              <a class="btn btn-primary" href="#audit-form">Run My Free Website Audit</a>
+              <a class="btn btn-secondary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
+            </div>
           </div>
+
+          <aside class="hero-card audit-teaser-card reveal">
+            <p class="kicker">What the tool checks</p>
+            <ul>
+              <li>Headline and title clarity</li>
+              <li>Meta description and mobile readiness</li>
+              <li>Calls to action and contact paths</li>
+              <li>Image alt coverage and structure basics</li>
+            </ul>
+          </aside>
         </div>
       </section>
 
-      <section class="section section-tight" id="audit-form">
+      <section class="section section-tight audit-stage" id="audit-form">
         <div class="container contact-layout reveal">
-          <div class="contact-form">
+          <div class="contact-form audit-form-card">
             <div class="success-panel" data-success-panel>
-              <h2>Request received</h2>
-              <p>Thanks for reaching out. We’ll take a quick look and follow up with the next steps after reviewing your site.</p>
+              <h2>Audit request received</h2>
+              <p>We saved the inquiry, logged it to your lead sheet, and generated the first-pass audit below.</p>
             </div>
 
             <h2>Get a Free Website Audit</h2>
-            <p class="lead-note">Tell us a little about your business and what you need help with.</p>
+            <p class="lead-note">Tell us a little about your business and the tool will generate a quick automated snapshot after you submit.</p>
 
             <form
               name="website-audit"
@@ -161,7 +173,7 @@
 
               <div class="field">
                 <label for="website-url">Current Website URL</label>
-                <input id="website-url" name="website-url" type="url" inputmode="url" placeholder="https://" />
+                <input id="website-url" name="website-url" type="url" inputmode="url" placeholder="https://" required />
               </div>
 
               <div class="field">
@@ -170,31 +182,56 @@
               </div>
 
               <button class="btn btn-primary" type="submit">Get a Free Website Audit</button>
-              <p class="form-note">No pressure. We’ll take a quick look and show you what may be helping or hurting conversions.</p>
+              <p class="form-note">No pressure. We will log the inquiry, generate a first-pass audit, and follow up from there.</p>
               <p class="form-status" data-form-status aria-live="polite"></p>
             </form>
+
+            <section class="audit-results-shell" data-audit-results hidden>
+              <div class="audit-score-card">
+                <p class="kicker">Instant Snapshot</p>
+                <h3 data-audit-headline>Audit ready</h3>
+                <div class="audit-score-row">
+                  <strong data-audit-score>0</strong>
+                  <span>/ 100</span>
+                </div>
+                <p data-audit-summary>We’ll show the score and top findings here after submission.</p>
+              </div>
+
+              <div class="audit-results-grid">
+                <article class="card audit-result-card">
+                  <p class="kicker">What Looks Good</p>
+                  <ul data-audit-strengths></ul>
+                </article>
+                <article class="card audit-result-card">
+                  <p class="kicker">Quick Wins</p>
+                  <ul data-audit-wins></ul>
+                </article>
+              </div>
+            </section>
           </div>
 
-          <aside class="card">
-            <p class="kicker">Direct Contact</p>
-            <h2>Prefer to reach out directly?</h2>
+          <aside class="card audit-side-panel">
+            <p class="kicker">What Happens Next</p>
+            <h2>The tool gives the first pass. We handle the real strategy.</h2>
             <div class="contact-options">
               <div class="contact-option">
-                <h3>Call</h3>
-                <p><a href="tel:+14803399585">(480) 339-9585</a></p>
+                <h3>Owner notification</h3>
+                <p>We log the lead, capture the website URL, and prepare an owner-facing summary for follow-up.</p>
               </div>
               <div class="contact-option">
-                <h3>Email</h3>
-                <p><a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a></p>
+                <h3>Client follow-up</h3>
+                <p>The client-facing response can include the automated snapshot and the next recommended step.</p>
               </div>
               <div class="contact-option">
-                <h3>Book instantly</h3>
+                <h3>Direct contact</h3>
                 <p>
+                  <a href="tel:+14803399585">(480) 339-9585</a><br />
+                  <a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a><br />
                   <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Schedule with Calendly</a>
                 </p>
               </div>
             </div>
-            <p class="note">Most audit requests get a quick review first, then a follow-up on what looks strongest and what should be fixed next.</p>
+            <p class="note">Automated audits are useful for the first snapshot, but the real value is knowing which fixes matter first for lead flow.</p>
           </aside>
         </div>
       </section>
