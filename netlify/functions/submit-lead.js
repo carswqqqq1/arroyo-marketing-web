@@ -464,6 +464,10 @@ exports.handler = async function handler(event) {
     try {
       audit = await generateAudit(payload.websiteUrl);
     } catch (error) {
+      console.error("audit_generation_failed", {
+        websiteUrl: payload.websiteUrl,
+        message: error && error.message ? error.message : "unknown_error"
+      });
       audit = buildFallbackAudit(payload.websiteUrl);
     }
 
@@ -510,6 +514,9 @@ exports.handler = async function handler(event) {
         await appendLeadRow(accessToken, sheetId, row);
         sheetStatus = "saved";
       } catch (error) {
+        console.error("sheet_sync_failed", {
+          message: error && error.message ? error.message : "unknown_error"
+        });
         sheetStatus = "failed";
       }
     }
