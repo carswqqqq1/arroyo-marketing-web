@@ -1,3 +1,6 @@
+const http = require("node:http");
+const https = require("node:https");
+
 const SHEET_RANGE = "Leads!A:V";
 const AUDIT_TIMEOUT_MS = 9000;
 
@@ -90,29 +93,51 @@ async function getAccessToken() {
   return payload.access_token;
 }
 
-async function fetchSiteHtml(url) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), AUDIT_TIMEOUT_MS);
+async function fetchSiteHtml(url, redirectCount = 0) {
+  if (redirectCount > 5) {
+    throw new Error("Too many redirects");
+  }
 
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent": "ArroyoMarketingAuditBot/1.0 (+https://arroyomarketing.com)"
+  const currentUrl = new URL(url);
+  const transport = currentUrl.protocol === "http:" ? http : https;
+
+  return new Promise((resolve, reject) => {
+    const request = transport.get(
+      currentUrl,
+      {
+        headers: {
+          "User-Agent": "ArroyoMarketingAuditBot/1.0 (+https://arroyomarketing.com)",
+          Accept: "text/html,application/xhtml+xml"
+        }
+      },
+      (response) => {
+        const location = response.headers.location;
+        if (location && response.statusCode >= 300 && response.statusCode < 400) {
+          response.resume();
+          const nextUrl = new URL(location, currentUrl).toString();
+          fetchSiteHtml(nextUrl, redirectCount + 1).then(resolve).catch(reject);
+          return;
+        }
+
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        response.on("end", () => {
+          resolve({
+            ok: response.statusCode >= 200 && response.statusCode < 400,
+            status: response.statusCode || 0,
+            finalUrl: currentUrl.toString(),
+            html: Buffer.concat(chunks).toString("utf8")
+          });
+        });
       }
+    );
+
+    request.setTimeout(AUDIT_TIMEOUT_MS, () => {
+      request.destroy(new Error("Site fetch timed out"));
     });
 
-    const html = await response.text();
-    return {
-      ok: response.ok,
-      status: response.status,
-      finalUrl: response.url || url,
-      html
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
+    request.on("error", reject);
+  });
 }
 
 function buildAuditFromHtml(url, html, status) {
