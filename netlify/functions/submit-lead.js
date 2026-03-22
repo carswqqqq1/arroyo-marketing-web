@@ -3,12 +3,27 @@ const https = require("node:https");
 
 const SHEET_RANGE = "Leads!A:V";
 const AUDIT_TIMEOUT_MS = 9000;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+const rateLimitBuckets = global.__arroyoRateLimitBuckets || new Map();
+global.__arroyoRateLimitBuckets = rateLimitBuckets;
 
-function json(statusCode, body) {
+const disposableDomains = new Set([
+  "mailinator.com",
+  "guerrillamail.com",
+  "tempmail.com",
+  "10minutemail.com",
+  "yopmail.com",
+  "trashmail.com",
+  "sharklasers.com"
+]);
+
+function json(statusCode, body, extraHeaders = {}) {
   return {
     statusCode,
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...extraHeaders
     },
     body: JSON.stringify(body)
   };
@@ -27,14 +42,118 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function getHeader(event, name) {
+  const headers = event.headers || {};
+  const target = name.toLowerCase();
+  const matchKey = Object.keys(headers).find((key) => key.toLowerCase() === target);
+  return matchKey ? headers[matchKey] : "";
+}
+
+function getRequestId(event) {
+  return clean(getHeader(event, "x-nf-request-id") || getHeader(event, "x-request-id")) || `req_${Date.now()}`;
+}
+
+function logEvent(level, code, details) {
+  const payload = { level, code, ...details };
+  if (level === "error") {
+    console.error(payload);
+    return;
+  }
+  if (level === "warn") {
+    console.warn(payload);
+    return;
+  }
+  console.log(payload);
+}
+
+function getClientIp(event) {
+  const raw = clean(
+    getHeader(event, "x-nf-client-connection-ip") ||
+      getHeader(event, "client-ip") ||
+      getHeader(event, "x-forwarded-for")
+  );
+
+  if (!raw) {
+    return "unknown";
+  }
+
+  return raw.split(",")[0].trim();
+}
+
+function checkRateLimit(ip) {
+  if (!ip || ip === "unknown") {
+    return { limited: false };
+  }
+
+  const now = Date.now();
+  const bucket = (rateLimitBuckets.get(ip) || []).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+
+  if (bucket.length >= RATE_LIMIT_MAX) {
+    const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - bucket[0])) / 1000);
+    rateLimitBuckets.set(ip, bucket);
+    return { limited: true, retryAfter };
+  }
+
+  bucket.push(now);
+  rateLimitBuckets.set(ip, bucket);
+  return { limited: false };
+}
+
+function validateEmailAddress(email) {
+  const normalized = clean(email).toLowerCase();
+  if (!normalized) {
+    return { ok: false, reason: "Email is required." };
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!emailPattern.test(normalized) || normalized.includes("..")) {
+    return { ok: false, reason: "Enter a valid email address." };
+  }
+
+  const domain = normalized.split("@")[1] || "";
+  if (disposableDomains.has(domain)) {
+    return { ok: false, reason: "Use a real business email or personal inbox you actually check." };
+  }
+
+  return { ok: true };
+}
+
+function validatePhoneNumber(phone) {
+  const digits = clean(phone).replace(/\D/g, "");
+  return digits.length >= 10;
+}
+
+function isPrivateHost(hostname) {
+  const host = clean(hostname).toLowerCase();
+  return (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "::1" ||
+    host.endsWith(".local") ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  );
+}
+
 function normalizeWebsiteUrl(input) {
   const trimmed = clean(input);
   if (!trimmed) {
-    return "";
+    throw new Error("Website URL is required.");
   }
 
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   const url = new URL(withProtocol);
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Use a valid website URL that starts with http or https.");
+  }
+
+  if (isPrivateHost(url.hostname)) {
+    throw new Error("Use a public website URL so the audit can scan it.");
+  }
+
   return url.toString();
 }
 
@@ -63,6 +182,14 @@ function wordCount(text) {
 
 function summarizeFlags(flags) {
   return flags.filter(Boolean).slice(0, 4).join(" | ");
+}
+
+function createQuickWin(text, priority) {
+  return { text, priority };
+}
+
+function quickWinText(item) {
+  return item && item.text ? `${item.text} [${item.priority}]` : String(item || "");
 }
 
 async function getAccessToken() {
@@ -106,7 +233,7 @@ async function fetchSiteHtml(url, redirectCount = 0, allowInsecure = false) {
       currentUrl,
       {
         headers: {
-          "User-Agent": "ArroyoMarketingAuditBot/1.0 (+https://arroyomarketing.com)",
+          "User-Agent": "ArroyoMarketingAuditBot/2.0 (+https://arroyomarketing.com)",
           Accept: "text/html,application/xhtml+xml"
         },
         rejectUnauthorized: !allowInsecure
@@ -141,9 +268,7 @@ async function fetchSiteHtml(url, redirectCount = 0, allowInsecure = false) {
       if (
         !allowInsecure &&
         currentUrl.protocol === "https:" &&
-        /(local issuer certificate|unable to verify the first certificate|self[- ]signed certificate)/i.test(
-          error.message || ""
-        )
+        /(local issuer certificate|unable to verify the first certificate|self[- ]signed certificate)/i.test(error.message || "")
       ) {
         fetchSiteHtml(currentUrl.toString(), redirectCount, true).then(resolve).catch(reject);
         return;
@@ -162,7 +287,7 @@ function buildAuditFromHtml(url, html, status) {
   const viewport = /<meta[^>]+name=["']viewport["']/i.test(html);
   const h1Count = (html.match(/<h1\b/gi) || []).length;
   const imgTags = html.match(/<img\b[^>]*>/gi) || [];
-  const imagesWithAlt = imgTags.filter((tag) => /\balt\s*=\s*(["']).*?\1/i.test(tag)).length;
+  const imagesWithAlt = imgTags.filter((tag) => /\balt\s*=\s*(?:["']).*?(?:["'])/i.test(tag)).length;
   const altCoverage = imgTags.length ? imagesWithAlt / imgTags.length : 1;
   const ctaMatches = html.match(/(call now|book a call|get started|request a quote|free audit|contact us|schedule|book now|request estimate|learn more)/gi) || [];
   const buttonCount = (html.match(/<button\b/gi) || []).length + ctaMatches.length;
@@ -177,30 +302,31 @@ function buildAuditFromHtml(url, html, status) {
   const negatives = [];
 
   score += status >= 200 && status < 400 ? 6 : 0;
+
   if (title) {
     score += title.length >= 20 && title.length <= 70 ? 14 : 8;
     positives.push("page title is present");
     if (title.length < 20 || title.length > 70) {
-      quickWins.push("Tighten the page title so it reads clearly in search results.");
+      quickWins.push(createQuickWin("Tighten the page title so it reads clearly in search results.", "Low"));
     } else {
       strengths.push("The page title is present and roughly search-result friendly.");
     }
   } else {
     negatives.push("missing page title");
-    quickWins.push("Add a clear page title focused on the service and location.");
+    quickWins.push(createQuickWin("Add a clear page title focused on the service and location.", "High"));
   }
 
   if (metaDescription) {
     score += metaDescription.length >= 70 && metaDescription.length <= 165 ? 14 : 8;
     positives.push("meta description exists");
     if (metaDescription.length < 70 || metaDescription.length > 165) {
-      quickWins.push("Rewrite the meta description so the offer is clearer and fits search snippets.");
+      quickWins.push(createQuickWin("Rewrite the meta description so the offer is clearer and fits search snippets.", "Medium"));
     } else {
       strengths.push("A meta description is already in place for search previews.");
     }
   } else {
     negatives.push("missing meta description");
-    quickWins.push("Add a meta description so search visitors see a stronger reason to click.");
+    quickWins.push(createQuickWin("Add a meta description so search visitors see a stronger reason to click.", "Medium"));
   }
 
   if (viewport) {
@@ -208,7 +334,7 @@ function buildAuditFromHtml(url, html, status) {
     strengths.push("The page includes a mobile viewport tag.");
   } else {
     negatives.push("no mobile viewport");
-    quickWins.push("Add a viewport meta tag so the site renders properly on phones.");
+    quickWins.push(createQuickWin("Add a viewport meta tag so the site renders properly on phones.", "High"));
   }
 
   if (h1Count === 1) {
@@ -217,10 +343,10 @@ function buildAuditFromHtml(url, html, status) {
   } else if (h1Count > 1) {
     score += 6;
     negatives.push("multiple H1 tags");
-    quickWins.push("Reduce the page to one primary H1 so the message hierarchy is clearer.");
+    quickWins.push(createQuickWin("Reduce the page to one primary H1 so the message hierarchy is clearer.", "Medium"));
   } else {
     negatives.push("missing H1");
-    quickWins.push("Add one strong H1 that explains what the business does and who it helps.");
+    quickWins.push(createQuickWin("Add one strong H1 that explains what the business does and who it helps.", "High"));
   }
 
   if (buttonCount >= 2) {
@@ -229,10 +355,10 @@ function buildAuditFromHtml(url, html, status) {
   } else if (buttonCount === 1) {
     score += 8;
     negatives.push("light CTA presence");
-    quickWins.push("Add a clearer primary CTA near the top of the page and repeat it lower down.");
+    quickWins.push(createQuickWin("Add a clearer primary CTA near the top of the page and repeat it lower down.", "Medium"));
   } else {
     negatives.push("weak CTA structure");
-    quickWins.push("Give visitors a clear next action like call, quote request, or booking.");
+    quickWins.push(createQuickWin("Give visitors a clear next action like call, quote request, or booking.", "High"));
   }
 
   if (contactPath) {
@@ -240,7 +366,7 @@ function buildAuditFromHtml(url, html, status) {
     strengths.push("Visitors appear to have a visible contact path.");
   } else {
     negatives.push("contact path is hard to spot");
-    quickWins.push("Make the contact path more obvious with a persistent button, phone link, or form.");
+    quickWins.push(createQuickWin("Make the contact path more obvious with a persistent button, phone link, or form.", "High"));
   }
 
   if (imgTags.length === 0 || altCoverage >= 0.8) {
@@ -249,10 +375,10 @@ function buildAuditFromHtml(url, html, status) {
   } else if (altCoverage >= 0.5) {
     score += 6;
     negatives.push("partial alt text coverage");
-    quickWins.push("Add alt text to the remaining images so the site is easier to parse and more accessible.");
+    quickWins.push(createQuickWin("Add alt text to the remaining images so the site is easier to parse and more accessible.", "Low"));
   } else {
     negatives.push("weak alt text coverage");
-    quickWins.push("Most images are missing alt text. Add descriptive alt copy where images matter.");
+    quickWins.push(createQuickWin("Most images are missing alt text. Add descriptive alt copy where images matter.", "Medium"));
   }
 
   if (textWordCount >= 250) {
@@ -261,10 +387,10 @@ function buildAuditFromHtml(url, html, status) {
   } else if (textWordCount >= 120) {
     score += 4;
     negatives.push("content depth is light");
-    quickWins.push("Add more specific copy about services, proof, and what happens next.");
+    quickWins.push(createQuickWin("Add more specific copy about services, proof, and what happens next.", "Medium"));
   } else {
     negatives.push("very thin content");
-    quickWins.push("The page needs more useful copy so visitors understand the offer quickly.");
+    quickWins.push(createQuickWin("The page needs more useful copy so visitors understand the offer quickly.", "High"));
   }
 
   if (usesHttps) {
@@ -272,7 +398,7 @@ function buildAuditFromHtml(url, html, status) {
     strengths.push("The site is loading over HTTPS.");
   } else {
     negatives.push("not using HTTPS");
-    quickWins.push("Serve the site over HTTPS so visitors and browsers trust it.");
+    quickWins.push(createQuickWin("Serve the site over HTTPS so visitors and browsers trust it.", "High"));
   }
 
   score = Math.max(12, Math.min(100, Math.round(score)));
@@ -297,9 +423,17 @@ function buildAuditFromHtml(url, html, status) {
     summaryParts.push(`The scanned page had about ${textWordCount} visible words.`);
   }
 
+  let overallPriority = "Medium";
+  if (score < 45) {
+    overallPriority = "High";
+  } else if (score >= 80) {
+    overallPriority = "Low";
+  }
+
   return {
     siteUrl: url,
     score,
+    overallPriority,
     headline,
     summary: summaryParts.join(" "),
     strengths: strengths.slice(0, 4),
@@ -310,8 +444,7 @@ function buildAuditFromHtml(url, html, status) {
 async function generateAudit(websiteUrl) {
   const normalizedUrl = normalizeWebsiteUrl(websiteUrl);
   const snapshot = await fetchSiteHtml(normalizedUrl);
-  const audit = buildAuditFromHtml(snapshot.finalUrl, snapshot.html, snapshot.status);
-  return audit;
+  return buildAuditFromHtml(snapshot.finalUrl, snapshot.html, snapshot.status);
 }
 
 function buildFallbackAudit(websiteUrl) {
@@ -319,14 +452,15 @@ function buildFallbackAudit(websiteUrl) {
   return {
     siteUrl: safeUrl,
     score: 18,
+    overallPriority: "High",
     headline: "We saved the inquiry, but the automated scan could not fully read the site.",
     summary:
       "That usually means the site blocked the request, timed out, or the URL needs a quick review. We still captured the lead and can audit it manually.",
     strengths: ["The inquiry and website URL were captured successfully."],
     quickWins: [
-      "Double-check that the website URL is correct and publicly reachable.",
-      "Make sure the site homepage loads without redirects or access restrictions.",
-      "We can still do a manual review if the automated scan is blocked."
+      createQuickWin("Double-check that the website URL is correct and publicly reachable.", "High"),
+      createQuickWin("Make sure the homepage loads without redirects or access restrictions.", "Medium"),
+      createQuickWin("Book a quick review if you want Arroyo to audit it manually.", "Low")
     ]
   };
 }
@@ -353,9 +487,8 @@ function buildOwnerEmail(payload, audit) {
           <p style="font-size:36px;font-weight:800;margin:0 0 6px;">${escapeHtml(audit.score)} / 100</p>
           <p style="font-weight:700;margin:0 0 8px;">${escapeHtml(audit.headline)}</p>
           <p style="margin:0 0 10px;">${escapeHtml(audit.summary)}</p>
-          <p style="font-weight:700;margin:0 0 6px;">Quick wins</p>
           <ul style="margin:0;padding-left:20px;">
-            ${audit.quickWins.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+            ${audit.quickWins.map((item) => `<li><strong>${escapeHtml(item.priority)}</strong>: ${escapeHtml(item.text)}</li>`).join("")}
           </ul>
         </div>
       </div>
@@ -370,20 +503,20 @@ function buildOwnerEmail(payload, audit) {
       `Audit score: ${audit.score}/100`,
       `Headline: ${audit.headline}`,
       `Summary: ${audit.summary}`,
-      `Quick wins: ${audit.quickWins.join(" | ")}`
+      `Quick wins: ${audit.quickWins.map(quickWinText).join(" | ")}`
     ].join("\n")
   };
 }
 
 function buildClientEmail(payload, audit) {
   return {
-    subject: `Your Arroyo Marketing website audit snapshot`,
+    subject: "Your Arroyo Marketing website audit snapshot",
     html: `
       <div style="font-family:Arial,sans-serif;color:#101828;line-height:1.5;max-width:640px;margin:0 auto;padding:24px;">
         <p style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#8a6b42;margin:0 0 12px;">Arroyo Marketing</p>
         <h1 style="font-size:28px;line-height:1.15;margin:0 0 16px;">Your audit request is in.</h1>
         <p style="margin:0 0 16px;">We generated a quick automated snapshot for ${escapeHtml(payload.websiteUrl)} so you have something useful right away.</p>
-        <div style="border-radius:20px;padding:20px;background:linear-gradient(135deg,#121826,#1d2740);color:#f8fbff;margin:0 0 18px;">
+        <div style="border-radius:20px;padding:20px;background:linear-gradient(135deg,#11151c,#233047);color:#f8fbff;margin:0 0 18px;">
           <p style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#d1b48b;margin:0 0 8px;">Instant Snapshot</p>
           <p style="font-size:42px;font-weight:800;margin:0 0 6px;">${escapeHtml(audit.score)} / 100</p>
           <p style="font-weight:700;margin:0 0 8px;color:#f8fbff;">${escapeHtml(audit.headline)}</p>
@@ -393,11 +526,11 @@ function buildClientEmail(payload, audit) {
         <ul style="margin:0 0 16px;padding-left:20px;">
           ${audit.strengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
         </ul>
-        <p style="font-weight:700;margin:0 0 6px;">Fastest next improvements</p>
+        <p style="font-weight:700;margin:0 0 6px;">Priority fixes</p>
         <ul style="margin:0 0 20px;padding-left:20px;">
-          ${audit.quickWins.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          ${audit.quickWins.map((item) => `<li><strong>${escapeHtml(item.priority)}</strong>: ${escapeHtml(item.text)}</li>`).join("")}
         </ul>
-        <p style="margin:0 0 16px;">If you want to walk through it live, reply to this email or book here:</p>
+        <p style="margin:0 0 16px;">Best next move: book a quick review call if you want help ranking the fixes.</p>
         <p style="margin:0;"><a href="https://calendly.com/carson-elevatemarketing/new-meeting">https://calendly.com/carson-elevatemarketing/new-meeting</a></p>
       </div>
     `,
@@ -408,7 +541,7 @@ function buildClientEmail(payload, audit) {
       `Headline: ${audit.headline}`,
       `Summary: ${audit.summary}`,
       `What looked solid: ${audit.strengths.join(" | ")}`,
-      `Fastest next improvements: ${audit.quickWins.join(" | ")}`,
+      `Priority fixes: ${audit.quickWins.map(quickWinText).join(" | ")}`,
       "Book a call: https://calendly.com/carson-elevatemarketing/new-meeting"
     ].join("\n")
   };
@@ -438,11 +571,7 @@ async function sendEmail({ to, subject, html, text }) {
     })
   });
 
-  if (!response.ok) {
-    return "failed";
-  }
-
-  return "sent";
+  return response.ok ? "sent" : "failed";
 }
 
 async function appendLeadRow(accessToken, sheetId, row) {
@@ -454,9 +583,7 @@ async function appendLeadRow(accessToken, sheetId, row) {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        values: [row]
-      })
+      body: JSON.stringify({ values: [row] })
     }
   );
 
@@ -467,8 +594,25 @@ async function appendLeadRow(accessToken, sheetId, row) {
 }
 
 exports.handler = async function handler(event) {
+  const requestId = getRequestId(event);
+  const clientIp = getClientIp(event);
+
   if (event.httpMethod !== "POST") {
     return json(405, { ok: false, error: "method_not_allowed" });
+  }
+
+  const rateLimit = checkRateLimit(clientIp);
+  if (rateLimit.limited) {
+    return json(
+      429,
+      {
+        ok: false,
+        error: "rate_limited",
+        message: "Too many audit requests from this connection. Wait a few minutes or call Arroyo directly.",
+        requestId
+      },
+      { "Retry-After": String(rateLimit.retryAfter) }
+    );
   }
 
   try {
@@ -476,11 +620,21 @@ exports.handler = async function handler(event) {
     const requiredFields = ["name", "business-name", "email", "phone", "help-needed", "website-url"];
     const missing = requiredFields.filter((field) => !clean(body[field]));
     if (missing.length) {
-      return json(400, { ok: false, error: "missing_required_fields", fields: missing });
+      return json(400, { ok: false, error: "missing_required_fields", fields: missing, message: "Fill in the required fields so Arroyo can run the audit.", requestId });
     }
 
     if (clean(body["company-website"])) {
+      logEvent("warn", "honeypot_triggered", { requestId, clientIp });
       return json(200, { ok: true, skipped: true });
+    }
+
+    const emailValidation = validateEmailAddress(body.email);
+    if (!emailValidation.ok) {
+      return json(400, { ok: false, error: "invalid_email", message: emailValidation.reason, requestId });
+    }
+
+    if (!validatePhoneNumber(body.phone)) {
+      return json(400, { ok: false, error: "invalid_phone", message: "Enter a real phone number so Arroyo can follow up if needed.", requestId });
     }
 
     const payload = {
@@ -503,7 +657,9 @@ exports.handler = async function handler(event) {
     try {
       audit = await generateAudit(payload.websiteUrl);
     } catch (error) {
-      console.error("audit_generation_failed", {
+      logEvent("error", "audit_generation_failed", {
+        requestId,
+        clientIp,
         websiteUrl: payload.websiteUrl,
         message: error && error.message ? error.message : "unknown_error"
       });
@@ -511,14 +667,8 @@ exports.handler = async function handler(event) {
     }
 
     const ownerEmail = clean(process.env.OWNER_EMAIL) || "carson.elevatemarketing@gmail.com";
-    const ownerStatus = await sendEmail({
-      to: ownerEmail,
-      ...buildOwnerEmail(payload, audit)
-    });
-    const clientStatus = await sendEmail({
-      to: payload.email,
-      ...buildClientEmail(payload, audit)
-    });
+    const ownerStatus = await sendEmail({ to: ownerEmail, ...buildOwnerEmail(payload, audit) });
+    const clientStatus = await sendEmail({ to: payload.email, ...buildClientEmail(payload, audit) });
 
     const row = [
       new Date().toISOString(),
@@ -539,7 +689,7 @@ exports.handler = async function handler(event) {
       audit.headline,
       audit.summary,
       audit.strengths.join(" | "),
-      audit.quickWins.join(" | "),
+      audit.quickWins.map(quickWinText).join(" | "),
       ownerStatus,
       clientStatus,
       "New"
@@ -553,7 +703,8 @@ exports.handler = async function handler(event) {
         await appendLeadRow(accessToken, sheetId, row);
         sheetStatus = "saved";
       } catch (error) {
-        console.error("sheet_sync_failed", {
+        logEvent("error", "sheet_sync_failed", {
+          requestId,
           message: error && error.message ? error.message : "unknown_error"
         });
         sheetStatus = "failed";
@@ -562,7 +713,9 @@ exports.handler = async function handler(event) {
 
     return json(200, {
       ok: true,
+      requestId,
       audit,
+      message: "Audit ready. Best next move: book a quick review call so Arroyo can rank the fixes.",
       delivery: {
         owner: ownerStatus,
         client: clientStatus
@@ -572,9 +725,17 @@ exports.handler = async function handler(event) {
       }
     });
   } catch (error) {
+    logEvent("error", "submission_failed", {
+      requestId,
+      clientIp,
+      message: error && error.message ? error.message : "unknown_error"
+    });
+
     return json(500, {
       ok: false,
-      error: "submission_failed"
+      error: "submission_failed",
+      message: "The request hit a backend issue. You can still call Arroyo directly while it is being retried.",
+      requestId
     });
   }
 };

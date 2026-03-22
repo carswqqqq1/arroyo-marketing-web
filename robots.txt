@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://arroyo-marketing-0307084718.netlify.app/sitemap.xml
+Sitemap: https://arroyomarketing.com/sitemap.xml
