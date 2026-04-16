@@ -995,6 +995,31 @@ textarea {
     height: 40px;
   }
 
+  .hero-copy {
+    max-width: 100%;
+  }
+
+  .hero-badge {
+    max-width: 100%;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.76rem;
+    line-height: 1.25;
+  }
+
+  .page-hero {
+    padding: 3.6rem 0 3.1rem;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(2.6rem, 12vw, 3.45rem);
+  }
+
+  .lead {
+    max-width: 34ch;
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
   .menu-toggle {
     min-width: 2.5rem;
     min-height: 2.5rem;
@@ -1008,6 +1033,11 @@ textarea {
   .btn,
   .success-actions .btn {
     width: 100%;
+  }
+
+  .hero-copy .btn-row .btn {
+    width: auto;
+    flex: 1 1 0;
   }
 
   .btn-row,
