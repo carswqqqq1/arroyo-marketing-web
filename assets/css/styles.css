@@ -127,11 +127,11 @@ textarea {
 .logo-link {
   display: inline-flex;
   align-items: center;
-  min-width: 120px;
+  min-width: 220px;
 }
 
 .logo {
-  height: 48px;
+  height: 72px;
   width: auto;
 }
 
@@ -992,7 +992,7 @@ textarea {
   }
 
   .logo {
-    height: 40px;
+    height: 52px;
   }
 
   .hero-copy {
