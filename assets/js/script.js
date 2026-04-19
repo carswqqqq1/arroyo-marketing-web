@@ -73,7 +73,7 @@
     revealItems.forEach((item) => item.classList.add("is-visible"));
   }
 
-  const form = document.querySelector('form[name="website-audit"]');
+  const form = document.querySelector('form[name="contact"], form[name="website-audit"]');
   if (!form) {
     return;
   }
@@ -246,7 +246,7 @@
       }
 
       if (statusNode) {
-        statusNode.textContent = result.message || "Audit ready. Best next move: book a quick review call so we can rank the fixes.";
+      statusNode.textContent = result.message || "Message received. Best next move: book a quick call so we can map the work.";
       }
 
       form.reset();
@@ -261,13 +261,13 @@
       const backupResponse = shouldBackup ? await runBackup() : null;
       if (statusNode) {
         statusNode.textContent = backupResponse && backupResponse.ok
-          ? error.message || "Your request was saved, but the instant audit hit a backend issue. We can still review it manually."
-          : error.message || "Submission failed. Call or email and Arroyo can still get your audit started.";
+          ? error.message || "Your request was saved, but the backend hit a snag. We can still review it manually."
+          : error.message || "Submission failed. Call or email and Arroyo can still help.";
       }
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = "Get a Free Website Audit";
+        submitButton.textContent = form.getAttribute("name") === "contact" ? "Send Message" : "Get a Free Website Audit";
       }
     }
   });
