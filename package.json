@@ -1,0 +1,10 @@
+{
+  "name": "arroyo-marketing-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check-site.js",
+    "deploy:netlify": "npx netlify deploy --prod --dir . --site=c5e9c275-b622-4f34-b3cb-de22b98c884e"
+  },
+  "devDependencies": {}
+}

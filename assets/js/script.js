@@ -210,7 +210,7 @@
 
     if (submitButton) {
       submitButton.disabled = true;
-      submitButton.textContent = "Scanning...";
+      submitButton.textContent = "Sending...";
     }
 
     if (statusNode) {
@@ -267,7 +267,7 @@
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = form.getAttribute("name") === "contact" ? "Send Message" : "Get a Free Website Audit";
+        submitButton.textContent = form.getAttribute("name") === "contact" ? "Send Message" : "Contact Arroyo";
       }
     }
   });
