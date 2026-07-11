@@ -33,7 +33,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/styles.css?v=20260711-2" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -134,6 +134,7 @@
               <input type="hidden" name="utm_campaign" value="" />
               <input type="hidden" name="utm_term" value="" />
               <input type="hidden" name="utm_content" value="" />
+              <input type="hidden" name="submission_id" value="" />
               <p hidden>
                 <label>
                   Do not fill this out: <input name="company-website" maxlength="200" />
@@ -172,6 +173,9 @@
                 <textarea id="help-needed" name="help-needed" autocapitalize="sentences" maxlength="4000" placeholder="Low-quality leads, weak trust, poor rankings, too few calls, confusing service pages..." required></textarea>
               </div>
 
+              <div class="turnstile-wrap">
+                <div class="turnstile-widget" data-sitekey="0x4AAAAAADz85tzA7spgOdxr" data-action="arroyo-contact" data-theme="light"></div>
+              </div>
               <button class="btn btn-primary" type="submit">Request My Review</button>
               <p class="form-note">No pressure. We’ll review the request and reply from contact@arroyomarketing.com with the clearest next step.</p>
               <p class="form-privacy">By submitting, you agree that Arroyo may use these details to respond to your request. See the <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms</a>.</p>
@@ -263,6 +267,7 @@
       <a class="btn btn-secondary" href="#contact-form">Contact Arroyo</a>
     </div>
 
-    <script src="assets/js/script.js"></script>
+    <script src="assets/js/script.js?v=20260711-2"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&amp;onload=onArroyoTurnstileLoad" defer></script>
   </body>
 </html>

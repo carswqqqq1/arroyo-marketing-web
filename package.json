@@ -9,7 +9,7 @@
     "check:all": "npm test && npm run build",
     "research:agencies": "node scripts/research-agency-sites.mjs",
     "dev:cloudflare": "npm run build && wrangler pages dev dist",
-    "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name=arroyo-marketing"
+    "deploy:cloudflare": "npm run check:all && wrangler pages deploy dist --project-name=arroyo-marketing"
   },
   "devDependencies": {
     "playwright": "^1.61.0",

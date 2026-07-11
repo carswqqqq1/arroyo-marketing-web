@@ -21,11 +21,20 @@ The handler returns success only after at least one owner-facing durable sink su
 
 Client acknowledgement email is attempted only after that persistence gate. The submitted website URL is optional and is not fetched by the public handler.
 
+Every non-honeypot submission must also pass Cloudflare Turnstile server-side verification for the exact `arroyo-contact` action and request hostname.
+
+The browser keeps a UUID submission key stable across retries. Google Sheets uses it as the ticket ID, and Resend receives distinct owner/client idempotency keys so a lost response does not duplicate side effects.
+
 ## Required configuration
 
 Configure at least one complete sink. Use `.env.example` as the key list; never commit real values.
 
 For local work, put Cloudflare values in an ignored `.dev.vars` file.
+
+### Cloudflare Turnstile
+
+- Public site key: embedded in `contact.html`
+- Encrypted Pages secret: `TURNSTILE_SECRET_KEY`
 
 ### Resend
 
@@ -35,10 +44,10 @@ For local work, put Cloudflare values in an ignored `.dev.vars` file.
 
 ### Google Sheets
 
-- `GOOGLE_SHEET_ID`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REFRESH_TOKEN`
+- `GOOGLE_SHEETS_WEBHOOK_URL`
+- `GOOGLE_SHEETS_WEBHOOK_SECRET`
+
+Use a dedicated Apps Script deployment and destination tab for Arroyo website inquiries. The handler sends a signed JSON envelope and accepts the row only when the webhook returns `{ "ok": true }`.
 
 Set non-sensitive values as Pages environment variables and credentials as encrypted Pages secrets. Never place live credentials in `wrangler.jsonc`.
 

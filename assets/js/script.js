@@ -127,6 +127,38 @@
   const auditWins = document.querySelector("[data-audit-wins]");
   const submitLabel = form.dataset.submitLabel || "Send Request";
   const genericSubmissionError = "We couldn't send your request right now. Call (480) 339-9585 or email contact@arroyomarketing.com and Arroyo can still help.";
+  const submissionIdInput = form.querySelector('input[name="submission_id"]');
+  const submissionStorageKey = "arroyo_contact_submission_id";
+
+  function createSubmissionId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+      const random = Math.floor(Math.random() * 16);
+      const value = character === "x" ? random : (random & 0x3) | 0x8;
+      return value.toString(16);
+    });
+  }
+
+  function setSubmissionId({ fresh = false } = {}) {
+    if (!submissionIdInput) return;
+    let id = "";
+    if (!fresh) {
+      try {
+        id = window.sessionStorage.getItem(submissionStorageKey) || "";
+      } catch {
+        id = "";
+      }
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) id = createSubmissionId();
+    submissionIdInput.value = id;
+    try {
+      window.sessionStorage.setItem(submissionStorageKey, id);
+    } catch {
+      // The hidden value still keeps same-page retries stable when storage is unavailable.
+    }
+  }
+
+  setSubmissionId();
 
   const hiddenValues = {
     source_page: window.location.pathname,
@@ -240,6 +272,31 @@
     if (statusNode) statusNode.textContent = "";
   }
 
+  let turnstileWidgetId = null;
+
+  function renderTurnstile() {
+    const widget = form.querySelector(".turnstile-widget");
+    if (!widget || turnstileWidgetId !== null || !window.turnstile || typeof window.turnstile.render !== "function") return;
+    turnstileWidgetId = window.turnstile.render(widget, {
+      sitekey: widget.dataset.sitekey,
+      action: widget.dataset.action,
+      theme: widget.dataset.theme || "light"
+    });
+  }
+
+  window.onArroyoTurnstileLoad = renderTurnstile;
+  renderTurnstile();
+
+  function resetTurnstile() {
+    if (turnstileWidgetId !== null && window.turnstile && typeof window.turnstile.reset === "function") {
+      try {
+        window.turnstile.reset(turnstileWidgetId);
+      } catch {
+        // Submission cleanup must not be masked if the third-party widget is unavailable.
+      }
+    }
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     resetPreviousResult();
@@ -254,8 +311,12 @@
       return;
     }
 
-    const submitButton = form.querySelector('button[type="submit"]');
     const payload = Object.fromEntries(new FormData(form).entries());
+    if (!String(payload["cf-turnstile-response"] || "").trim()) {
+      if (statusNode) statusNode.textContent = "Complete the security check and try again.";
+      return;
+    }
+    const submitButton = form.querySelector('button[type="submit"]');
 
     if (submitButton) {
       submitButton.disabled = true;
@@ -292,11 +353,18 @@
 
       form.reset();
       restoreHiddenValues();
+      try {
+        window.sessionStorage.removeItem(submissionStorageKey);
+      } catch {
+        // Ignore storage restrictions after a confirmed submission.
+      }
+      setSubmissionId({ fresh: true });
     } catch (error) {
       if (statusNode) {
         statusNode.textContent = safeSubmissionError(error);
       }
     } finally {
+      resetTurnstile();
       if (submitButton) {
         submitButton.disabled = false;
         submitButton.textContent = submitLabel;
