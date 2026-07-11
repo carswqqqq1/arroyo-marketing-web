@@ -100,6 +100,8 @@ test("accepts an optional website and never fetches the submitted URL", async ()
   assert.equal(calls[0].body.reply_to, "jamie@example.com");
   assert.equal(calls[1].body.reply_to, "contact@arroyomarketing.com");
   assert.match(calls[1].body.html, /background-color:#11151c/);
+  assert.ok(calls.every((call) => call.body.html.includes('https://arroyomarketing.com/assets/images/logos/arroyo-logo-light-bg.png')));
+  assert.ok(calls.every((call) => call.body.html.includes('alt="Arroyo Marketing"')));
 });
 
 test("uses a saved Google Sheet row as a durable sink and neutralizes formulas", async () => {
