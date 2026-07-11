@@ -3,5 +3,9 @@
   "name": "arroyo-marketing",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-07-11",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "OWNER_EMAIL": "contact@arroyomarketing.com",
+    "FROM_EMAIL": "Arroyo Marketing <leads@arroyomarketing.com>"
+  }
 }
