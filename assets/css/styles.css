@@ -59,8 +59,13 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid rgba(160, 111, 59, 0.28);
-  outline-offset: 3px;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px #6b3f1d;
+}
+
+body.menu-open {
+  overflow: hidden;
 }
 
 .skip-link {
@@ -258,12 +263,12 @@ p {
 
 .btn-primary {
   color: #fff;
-  background: linear-gradient(135deg, #ad7a43, #8a5d2f);
+  background: linear-gradient(135deg, #8a5d2f, #6b3f1d);
   box-shadow: 0 16px 32px rgba(135, 94, 49, 0.24);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #9c6d3b, #764b22);
+  background: linear-gradient(135deg, #764b22, #542f12);
 }
 
 .btn-secondary {
@@ -1054,6 +1059,38 @@ textarea {
   margin-top: 0.95rem;
 }
 
+.form-privacy {
+  margin: 0.95rem 0 0;
+  font-size: 0.86rem;
+}
+
+.form-privacy a,
+.legal-copy a {
+  color: var(--accent-dark);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.field-optional {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.legal-copy {
+  max-width: 860px;
+}
+
+.legal-copy h2:not(:first-child) {
+  margin-top: 2rem;
+}
+
+.legal-copy ul {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .form-status {
   min-height: 1.5rem;
   color: var(--accent-dark);
@@ -1191,6 +1228,10 @@ textarea {
   margin-top: 1.35rem;
   display: grid;
   gap: 1rem;
+}
+
+.audit-results-shell[hidden] {
+  display: none;
 }
 
 .audit-score-card {
@@ -1479,7 +1520,7 @@ textarea {
     bottom: 0;
     z-index: 140;
     display: grid;
-    grid-template-columns: 1.2fr 0.9fr 0.9fr;
+    grid-template-columns: 1.1fr 1fr;
     gap: 0.55rem;
     padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
     background: rgba(15, 20, 28, 0.97);

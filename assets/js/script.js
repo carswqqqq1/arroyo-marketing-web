@@ -3,11 +3,26 @@
   const nav = document.querySelector("[data-main-nav]");
 
   if (menuButton && nav) {
-    const setMenuState = (isOpen) => {
+    const inertTargets = [...document.querySelectorAll("main, .top-bar, .site-footer, .mobile-cta-bar")];
+    const setMenuState = (isOpen, { restoreFocus = false } = {}) => {
       nav.classList.toggle("open", isOpen);
       menuButton.setAttribute("aria-expanded", String(isOpen));
       menuButton.setAttribute("aria-label", isOpen ? "Close site navigation" : "Open site navigation");
       menuButton.textContent = isOpen ? "Close" : "Menu";
+      document.body.classList.toggle("menu-open", isOpen);
+
+      inertTargets.forEach((target) => {
+        target.inert = isOpen;
+        if (isOpen) {
+          target.setAttribute("aria-hidden", "true");
+        } else {
+          target.removeAttribute("aria-hidden");
+        }
+      });
+
+      if (!isOpen && restoreFocus) {
+        menuButton.focus();
+      }
     };
 
     setMenuState(false);
@@ -24,8 +39,24 @@
     });
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        setMenuState(false);
+      const expanded = menuButton.getAttribute("aria-expanded") === "true";
+      if (event.key === "Escape" && expanded) {
+        event.preventDefault();
+        setMenuState(false, { restoreFocus: true });
+        return;
+      }
+
+      if (event.key === "Tab" && expanded) {
+        const focusable = [menuButton, ...nav.querySelectorAll("a[href]")];
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     });
 
@@ -36,6 +67,12 @@
       }
 
       if (!nav.contains(event.target) && !menuButton.contains(event.target)) {
+        setMenuState(false);
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 980 && menuButton.getAttribute("aria-expanded") === "true") {
         setMenuState(false);
       }
     });
@@ -88,6 +125,7 @@
   const auditPriority = document.querySelector("[data-audit-priority]");
   const auditStrengths = document.querySelector("[data-audit-strengths]");
   const auditWins = document.querySelector("[data-audit-wins]");
+  const submitLabel = form.dataset.submitLabel || "Send Request";
 
   const hiddenValues = {
     source_page: window.location.pathname,
@@ -98,10 +136,6 @@
     utm_term: params.get("utm_term") || "",
     utm_content: params.get("utm_content") || ""
   };
-
-  if (params.get("submitted") === "1" && successPanel) {
-    successPanel.classList.add("is-visible");
-  }
 
   Object.entries(hiddenValues).forEach(([name, value]) => {
     const field = form.querySelector(`[name="${name}"]`);
@@ -175,23 +209,54 @@
     auditResults.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function restoreHiddenValues() {
+    Object.entries(hiddenValues).forEach(([name, value]) => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field) field.value = value;
+    });
+  }
+
+  function showSuccess() {
+    if (!successPanel) return;
+    successPanel.classList.add("is-visible");
+    successPanel.setAttribute("tabindex", "-1");
+    successPanel.focus();
+  }
+
+  function resetPreviousResult() {
+    if (successPanel) {
+      successPanel.classList.remove("is-visible");
+      successPanel.removeAttribute("tabindex");
+    }
+    if (auditResults) auditResults.hidden = true;
+    if (statusNode) statusNode.textContent = "";
+  }
+
   async function saveNetlifyCopy(formData) {
     const encoded = new URLSearchParams();
     formData.forEach((value, key) => {
       encoded.append(key, String(value));
     });
 
-    return fetch("/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: encoded.toString()
-    });
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    try {
+      return await fetch("/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: encoded.toString(),
+        signal: controller.signal
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    resetPreviousResult();
 
     if (!form.reportValidity()) {
       return;
@@ -213,10 +278,6 @@
       submitButton.textContent = "Sending...";
     }
 
-    if (statusNode) {
-      statusNode.textContent = "";
-    }
-
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -227,47 +288,49 @@
       });
 
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
+      const supportedPlatform = result.platform === "cloudflare" || result.platform === "netlify";
+      const durablePrimary = result.delivery?.owner === "sent" || result.storage?.sheet === "saved";
+      if (!response.ok || result.ok !== true || !supportedPlatform || !durablePrimary) {
         const requestError = new Error(result.message || "Lead submission failed");
         requestError.statusCode = response.status;
+        requestError.platform = result.platform || "";
         throw requestError;
       }
 
-      await runBackup();
-
-      if (successPanel) {
-        successPanel.classList.add("is-visible");
-        successPanel.setAttribute("tabindex", "-1");
-        successPanel.focus();
+      if (result.platform === "netlify") {
+        void runBackup();
       }
+
+      showSuccess();
 
       if (result.audit) {
         renderAudit(result.audit);
       }
 
       if (statusNode) {
-      statusNode.textContent = result.message || "Message received. Best next move: book a quick call so we can map the work.";
+        statusNode.textContent = result.message || "Your request was safely received. Arroyo will reply with the clearest next step.";
       }
 
       form.reset();
-      Object.entries(hiddenValues).forEach(([name, value]) => {
-        const field = form.querySelector(`[name="${name}"]`);
-        if (field) {
-          field.value = value;
-        }
-      });
+      restoreHiddenValues();
     } catch (error) {
-      const shouldBackup = !error.statusCode || error.statusCode >= 500;
+      const shouldBackup = error.platform === "netlify" && (!error.statusCode || error.statusCode >= 500);
       const backupResponse = shouldBackup ? await runBackup() : null;
+      const backupSaved = Boolean(backupResponse && backupResponse.ok);
+      if (backupSaved) {
+        showSuccess();
+        form.reset();
+        restoreHiddenValues();
+      }
       if (statusNode) {
-        statusNode.textContent = backupResponse && backupResponse.ok
-          ? error.message || "Your request was saved, but the backend hit a snag. We can still review it manually."
+        statusNode.textContent = backupSaved
+          ? "Your request was saved through our backup intake. Arroyo will review it manually."
           : error.message || "Submission failed. Call or email and Arroyo can still help.";
       }
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = form.getAttribute("name") === "contact" ? "Send Message" : "Contact Arroyo";
+        submitButton.textContent = submitLabel;
       }
     }
   });

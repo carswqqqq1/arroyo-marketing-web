@@ -13,7 +13,7 @@
     <meta property="og:title" content="Contact Arroyo Marketing" />
     <meta
       property="og:description"
-      content="Get an instant snapshot of the trust, structure, and conversion issues that may be hurting your website."
+      content="Request a thoughtful review of the trust, structure, and conversion issues that may be hurting your website."
     />
     <meta property="og:url" content="https://arroyomarketing.com/contact.html" />
     <meta property="og:image" content="https://arroyomarketing.com/assets/images/logos/arroyo-logo-light-bg.png" />
@@ -21,7 +21,7 @@
     <meta name="twitter:title" content="Contact Arroyo Marketing" />
     <meta
       name="twitter:description"
-      content="Get an instant snapshot of the trust, structure, and conversion issues that may be hurting your website."
+      content="Request a thoughtful review of the trust, structure, and conversion issues that may be hurting your website."
     />
     <meta name="twitter:image" content="https://arroyomarketing.com/assets/images/logos/arroyo-logo-light-bg.png" />
     <meta name="theme-color" content="#11151c" />
@@ -41,7 +41,7 @@
         "name": "Arroyo Marketing",
         "url": "https://arroyomarketing.com/contact.html",
         "telephone": "+1-480-339-9585",
-        "email": "hello@arroyomarketing.co",
+        "email": "contact@arroyomarketing.com",
         "description": "Premium websites and lead systems for local service businesses."
       }
     </script>
@@ -54,7 +54,7 @@
         <span>Questions? Call</span>
         <a href="tel:+14803399585">(480) 339-9585</a>
         <span>|</span>
-        <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
+        <a href="#contact-form">Start a Conversation</a>
       </div>
     </div>
 
@@ -72,7 +72,7 @@
             <a href="about.html">About</a>
             <a href="contact.html">Contact</a>
           </nav>
-          <a class="btn btn-primary header-cta" href="#contact-form">Book a Call</a>
+          <a class="btn btn-primary header-cta" href="#contact-form">Contact Arroyo</a>
         </div>
       </div>
     </header>
@@ -87,8 +87,8 @@
               If you need a stronger homepage, clearer service pages, or a better lead path, reach out and we’ll map the cleanest way forward.
             </p>
             <div class="btn-row">
-              <a class="btn btn-primary" href="#contact-form">Contact Now</a>
-              <a class="btn btn-secondary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
+              <a class="btn btn-primary" href="#contact-form">Request a Review</a>
+              <a class="btn btn-secondary" href="tel:+14803399585">Call Arroyo</a>
             </div>
           </div>
 
@@ -108,11 +108,11 @@
         <div class="container contact-layout reveal">
           <div class="contact-form audit-form-card">
             <div class="success-panel" data-success-panel>
-              <p class="success-eyebrow">Message Sent</p>
+              <p class="success-eyebrow">Request Received</p>
               <h2>Thanks. We’ll review your note and reply with the best next step.</h2>
-              <p>If a call is the fastest path, you can book one now and skip the back-and-forth.</p>
+              <p>Your request was stored in an owner-facing lead intake before this confirmation appeared.</p>
               <div class="success-actions">
-                <a class="btn btn-primary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a 15-Minute Call</a>
+                <a class="btn btn-primary" href="mailto:contact@arroyomarketing.com">Email Arroyo</a>
                 <a class="btn btn-secondary" href="tel:+14803399585">Call Now</a>
               </div>
             </div>
@@ -123,9 +123,10 @@
             <form
               name="contact"
               method="POST"
-              action="contact.html?submitted=1#contact-form"
+              action="contact.html#contact-form"
               data-netlify="true"
-              data-lead-endpoint="/.netlify/functions/submit-lead"
+              data-lead-endpoint="/api/lead"
+              data-submit-label="Request My Review"
               netlify-honeypot="company-website"
             >
               <input type="hidden" name="form-name" value="contact" />
@@ -138,44 +139,45 @@
               <input type="hidden" name="utm_content" value="" />
               <p hidden>
                 <label>
-                  Do not fill this out: <input name="company-website" />
+                  Do not fill this out: <input name="company-website" maxlength="200" />
                 </label>
               </p>
 
               <div class="field-grid">
                 <div class="field">
                   <label for="name">Name</label>
-                  <input id="name" name="name" type="text" autocomplete="name" autocapitalize="words" required />
+                  <input id="name" name="name" type="text" autocomplete="name" autocapitalize="words" maxlength="100" required />
                 </div>
                 <div class="field">
                   <label for="business-name">Business Name</label>
-                  <input id="business-name" name="business-name" type="text" autocomplete="organization" autocapitalize="words" required />
+                  <input id="business-name" name="business-name" type="text" autocomplete="organization" autocapitalize="words" maxlength="150" required />
                 </div>
               </div>
 
               <div class="field-grid">
                 <div class="field">
                   <label for="email">Email</label>
-                  <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required />
+                  <input id="email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" required />
                 </div>
                 <div class="field">
                   <label for="phone">Phone</label>
-                  <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required />
+                  <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="40" required />
                 </div>
               </div>
 
               <div class="field">
-                <label for="website-url">Current Website URL</label>
-                <input id="website-url" name="website-url" type="url" inputmode="url" placeholder="https://" required />
+                <label for="website-url">Current Website URL <span class="field-optional">(optional)</span></label>
+                <input id="website-url" name="website-url" type="url" inputmode="url" autocomplete="url" maxlength="2048" placeholder="https://" />
               </div>
 
               <div class="field">
                 <label for="help-needed">What feels off right now?</label>
-                <textarea id="help-needed" name="help-needed" autocapitalize="sentences" placeholder="Low-quality leads, weak trust, poor rankings, too few calls, confusing service pages..." required></textarea>
+                <textarea id="help-needed" name="help-needed" autocapitalize="sentences" maxlength="4000" placeholder="Low-quality leads, weak trust, poor rankings, too few calls, confusing service pages..." required></textarea>
               </div>
 
-              <button class="btn btn-primary" type="submit">Send Message</button>
-              <p class="form-note">No pressure. The inquiry gets captured and we’ll reply with the clearest next step.</p>
+              <button class="btn btn-primary" type="submit">Request My Review</button>
+              <p class="form-note">No pressure. We’ll review the request and reply from contact@arroyomarketing.com with the clearest next step.</p>
+              <p class="form-privacy">By submitting, you agree that Arroyo may use these details to respond to your request. See the <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms</a>.</p>
               <p class="form-status" data-form-status aria-live="polite"></p>
             </form>
 
@@ -222,12 +224,12 @@
                 <h3>Direct contact if you want help</h3>
                 <p>
                   <a href="tel:+14803399585">(480) 339-9585</a><br />
-                  <a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a><br />
-                  <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Schedule with Calendly</a>
+                  <a href="mailto:contact@arroyomarketing.com">contact@arroyomarketing.com</a><br />
+                  <a href="#contact-form">Use the contact form</a>
                 </p>
               </div>
             </div>
-            <p class="note">If you already know what you need, just call or book a time and we’ll take it from there.</p>
+            <p class="note">If you already know what you need, call, email, or use the form and we’ll take it from there.</p>
           </aside>
         </div>
       </section>
@@ -246,11 +248,13 @@
             <a href="portfolio.html">How We Build</a>
             <a href="about.html">About</a>
             <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy</a>
+            <a href="terms.html">Terms</a>
           </nav>
           <div class="footer-contact">
-            <a href="mailto:hello@arroyomarketing.co">hello@arroyomarketing.co</a>
+            <a href="mailto:contact@arroyomarketing.com">contact@arroyomarketing.com</a>
             <a href="tel:+14803399585">(480) 339-9585</a>
-            <a href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book a Call</a>
+            <a href="#contact-form">Start a Conversation</a>
           </div>
         </div>
         <div class="footer-bottom">&copy; <span data-year></span> Arroyo Marketing. All rights reserved.</div>
@@ -259,8 +263,7 @@
 
     <div class="mobile-cta-bar" aria-label="Quick actions">
       <a class="btn btn-primary" href="tel:+14803399585" aria-label="Call Arroyo Marketing at 480 339 9585">Call Carson</a>
-      <a class="btn btn-secondary" href="https://calendly.com/carson-elevatemarketing/new-meeting" target="_blank" rel="noopener noreferrer">Book</a>
-      <a class="btn btn-soft" href="#contact-form">Contact</a>
+      <a class="btn btn-secondary" href="#contact-form">Contact Arroyo</a>
     </div>
 
     <script src="assets/js/script.js"></script>

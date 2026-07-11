@@ -6,3 +6,14 @@ node_modules/
 
 # Local QA artifacts
 output/
+
+# Generated deployment output
+dist/
+
+# Local platform state and secrets
+.wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
