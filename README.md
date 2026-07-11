@@ -1,6 +1,6 @@
 # Arroyo Marketing website
 
-Static marketing site with one shared lead handler for Cloudflare Pages and Netlify.
+Static marketing site deployed on Cloudflare Pages with a Pages Function for lead intake.
 
 ## Local checks
 
@@ -12,10 +12,7 @@ npm run check:all
 
 ## Lead delivery contract
 
-The public form posts to `/api/lead` on both platforms:
-
-- Cloudflare Pages routes the request through `functions/api/lead.js`.
-- Netlify rewrites `/api/lead` to `netlify/functions/submit-lead.js`.
+The public form posts to `/api/lead`. Cloudflare Pages routes the request through `functions/api/lead.js` and the shared logic in `lib/lead-handler.mjs`.
 
 The handler returns success only after at least one owner-facing durable sink succeeds:
 
@@ -28,7 +25,7 @@ Client acknowledgement email is attempted only after that persistence gate. The 
 
 Configure at least one complete sink. Use `.env.example` as the key list; never commit real values.
 
-For local work, put Cloudflare values in an ignored `.dev.vars` file or Netlify values in an ignored `.env` file.
+For local work, put Cloudflare values in an ignored `.dev.vars` file.
 
 ### Resend
 
@@ -43,7 +40,7 @@ For local work, put Cloudflare values in an ignored `.dev.vars` file or Netlify 
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REFRESH_TOKEN`
 
-For Cloudflare, set these as Pages environment variables or encrypted secrets in the dashboard. For Netlify, set them in Site configuration > Environment variables.
+Set non-sensitive values as Pages environment variables and credentials as encrypted Pages secrets. Never place live credentials in `wrangler.jsonc`.
 
 ## Cloudflare Pages
 
@@ -51,7 +48,7 @@ For Cloudflare, set these as Pages environment variables or encrypted secrets in
 - Build output directory: `dist`
 - Functions directory: `functions`
 
-`wrangler.toml` records the output directory and compatibility date. `_headers` and `_redirects` are copied into `dist` during the build.
+`wrangler.jsonc` is the source of truth for the output directory, compatibility date, and compatibility flags. `_headers` and `_redirects` are copied into `dist` during the build.
 
 Run a local Pages preview after configuring local environment values:
 
@@ -59,4 +56,6 @@ Run a local Pages preview after configuring local environment values:
 npm run dev:cloudflare
 ```
 
-Do not deploy until a test request proves the owner sink, optional client email, and sheet behavior in the intended production environment.
+The handler keeps request validation and a honeypot in code. Configure abuse protection and rate limiting at the Cloudflare edge; do not add isolate-local mutable counters to the Function.
+
+Do not deploy until a test request proves the owner email, client acknowledgement, and Google Sheets row in the intended production environment.

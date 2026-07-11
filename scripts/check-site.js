@@ -100,21 +100,15 @@ const styles = read("assets/css/styles.css");
 if (!/\.audit-results-shell\[hidden\]\s*\{\s*display:\s*none;/i.test(styles)) failures.push("styles.css: hidden audit results must stay hidden");
 
 const clientScript = read("assets/js/script.js");
-if (!/requestError\.platform\s*=\s*result\.platform/.test(clientScript) || !/shouldBackup\s*=\s*error\.platform\s*===\s*["']netlify["']/.test(clientScript)) {
-  failures.push("script.js: Netlify form fallback must be gated by the verified response platform");
-}
-if (!/result\.ok\s*!==\s*true/.test(clientScript) || !/supportedPlatform\s*=\s*result\.platform\s*===\s*["']cloudflare["']\s*\|\|\s*result\.platform\s*===\s*["']netlify["']/.test(clientScript)) {
-  failures.push("script.js: lead success must require an explicit API success flag and supported platform");
+if (!/result\.ok\s*!==\s*true/.test(clientScript) || !/isCloudflare\s*=\s*result\.platform\s*===\s*["']cloudflare["']/.test(clientScript)) {
+  failures.push("script.js: lead success must require an explicit API success flag and Cloudflare response");
 }
 if (!/durablePrimary\s*=\s*result\.delivery\?\.owner\s*===\s*["']sent["']\s*\|\|\s*result\.storage\?\.sheet\s*===\s*["']saved["']/.test(clientScript)) {
   failures.push("script.js: lead success must verify a durable owner-facing sink");
 }
-if (!/result\.platform\s*===\s*["']netlify["'][\s\S]*?void runBackup\(\)/.test(clientScript) || !/controller\.abort\(\)/.test(clientScript)) {
-  failures.push("script.js: optional Netlify copy must be nonblocking and time-bounded");
-}
 if (!/event\.preventDefault\(\);\s*resetPreviousResult\(\);/.test(clientScript)) failures.push("script.js: every submission must clear stale success state first");
 if (/params\.get\(["']submitted["']\)/.test(clientScript)) failures.push("script.js: query-string success state must not bypass persistence");
-if (!/function\s+safeSubmissionError\(error\)/.test(clientScript) || !/Number\.isInteger\(error\?\.statusCode\)/.test(clientScript) || !/:\s*safeSubmissionError\(error\)/.test(clientScript)) {
+if (!/function\s+safeSubmissionError\(error\)/.test(clientScript) || !/Number\.isInteger\(error\?\.statusCode\)/.test(clientScript) || !/=\s*safeSubmissionError\(error\)/.test(clientScript)) {
   failures.push("script.js: network failures must use a public-safe fallback instead of exposing raw browser errors");
 }
 if (/error\.message\s*\|\|\s*["']Submission failed/.test(clientScript) || !/We couldn't send your request right now\./.test(clientScript)) {
@@ -127,13 +121,11 @@ if (!/<meta\s+name="robots"\s+content="noindex,follow"/i.test(notFound)) failure
 const requiredAssets = [
   "robots.txt",
   "sitemap.xml",
-  "netlify.toml",
-  "wrangler.toml",
+  "wrangler.jsonc",
   "_headers",
   "_redirects",
   ".env.example",
   "functions/api/lead.js",
-  "netlify/functions/submit-lead.js",
   "lib/lead-handler.mjs"
 ];
 for (const file of requiredAssets) {
@@ -145,9 +137,19 @@ for (const route of ["privacy.html", "terms.html"]) {
   if (!sitemap.includes(`https://arroyomarketing.com/${route}`)) failures.push(`sitemap.xml: missing ${route}`);
 }
 
-const netlifyConfig = read("netlify.toml");
-if (!/from\s*=\s*"\/api\/lead"[\s\S]*?to\s*=\s*"\/\.netlify\/functions\/submit-lead"/.test(netlifyConfig)) {
-  failures.push("netlify.toml: missing /api/lead compatibility rewrite");
+const redirects = read("_redirects");
+if (/^\S+\s+\S+\.html\s+200\s*$/m.test(redirects)) {
+  failures.push("_redirects: HTML rewrites conflict with Cloudflare Pages clean-URL handling");
+}
+
+try {
+  const wranglerConfig = JSON.parse(read("wrangler.jsonc"));
+  if (wranglerConfig.name !== "arroyo-marketing") failures.push("wrangler.jsonc: project name must remain arroyo-marketing");
+  if (wranglerConfig.pages_build_output_dir !== "./dist") failures.push("wrangler.jsonc: Pages output directory must be ./dist");
+  if (wranglerConfig.compatibility_date !== "2026-07-11") failures.push("wrangler.jsonc: compatibility date must be 2026-07-11");
+  if (!wranglerConfig.compatibility_flags?.includes("nodejs_compat")) failures.push("wrangler.jsonc: nodejs_compat must be enabled");
+} catch {
+  failures.push("wrangler.jsonc: configuration must be valid JSONC without syntax errors");
 }
 
 const envExample = read(".env.example");

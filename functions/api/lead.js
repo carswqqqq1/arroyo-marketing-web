@@ -4,8 +4,7 @@ export async function onRequestPost(context) {
   return handleLeadRequest({
     request: context.request,
     env: context.env,
-    platform: "cloudflare",
-    clientIp: context.request.headers.get("CF-Connecting-IP") || "unknown"
+    platform: "cloudflare"
   });
 }
 

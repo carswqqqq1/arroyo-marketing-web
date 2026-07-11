@@ -240,28 +240,6 @@
     if (statusNode) statusNode.textContent = "";
   }
 
-  async function saveNetlifyCopy(formData) {
-    const encoded = new URLSearchParams();
-    formData.forEach((value, key) => {
-      encoded.append(key, String(value));
-    });
-
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
-    try {
-      return await fetch("/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: encoded.toString(),
-        signal: controller.signal
-      });
-    } finally {
-      window.clearTimeout(timeout);
-    }
-  }
-
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     resetPreviousResult();
@@ -277,9 +255,7 @@
     }
 
     const submitButton = form.querySelector('button[type="submit"]');
-    const formData = new FormData(form);
-    const payload = Object.fromEntries(formData.entries());
-    const runBackup = () => saveNetlifyCopy(formData).catch(() => null);
+    const payload = Object.fromEntries(new FormData(form).entries());
 
     if (submitButton) {
       submitButton.disabled = true;
@@ -296,17 +272,12 @@
       });
 
       const result = await response.json().catch(() => ({}));
-      const supportedPlatform = result.platform === "cloudflare" || result.platform === "netlify";
+      const isCloudflare = result.platform === "cloudflare";
       const durablePrimary = result.delivery?.owner === "sent" || result.storage?.sheet === "saved";
-      if (!response.ok || result.ok !== true || !supportedPlatform || !durablePrimary) {
+      if (!response.ok || result.ok !== true || !isCloudflare || !durablePrimary) {
         const requestError = new Error(result.message || "Lead submission failed");
         requestError.statusCode = response.status;
-        requestError.platform = result.platform || "";
         throw requestError;
-      }
-
-      if (result.platform === "netlify") {
-        void runBackup();
       }
 
       showSuccess();
@@ -322,18 +293,8 @@
       form.reset();
       restoreHiddenValues();
     } catch (error) {
-      const shouldBackup = error.platform === "netlify" && (!error.statusCode || error.statusCode >= 500);
-      const backupResponse = shouldBackup ? await runBackup() : null;
-      const backupSaved = Boolean(backupResponse && backupResponse.ok);
-      if (backupSaved) {
-        showSuccess();
-        form.reset();
-        restoreHiddenValues();
-      }
       if (statusNode) {
-        statusNode.textContent = backupSaved
-          ? "Your request was saved through our backup intake. Arroyo will review it manually."
-          : safeSubmissionError(error);
+        statusNode.textContent = safeSubmissionError(error);
       }
     } finally {
       if (submitButton) {

@@ -8,11 +8,11 @@
     "build": "npm run check && node scripts/build-site.js",
     "check:all": "npm test && npm run build",
     "research:agencies": "node scripts/research-agency-sites.mjs",
-    "dev:cloudflare": "npm run build && npx --yes wrangler@4.107.1 pages dev dist",
-    "deploy:cloudflare": "npm run build && npx --yes wrangler@4.107.1 pages deploy dist --project-name=arroyo-marketing",
-    "deploy:netlify": "npm run build && npx --yes netlify-cli@24.0.1 deploy --no-build --prod --dir dist --site=c5e9c275-b622-4f34-b3cb-de22b98c884e"
+    "dev:cloudflare": "npm run build && wrangler pages dev dist",
+    "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name=arroyo-marketing"
   },
   "devDependencies": {
-    "playwright": "^1.61.0"
+    "playwright": "^1.61.0",
+    "wrangler": "4.110.0"
   }
 }

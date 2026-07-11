@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
 import { handleLeadRequest, MAX_BODY_BYTES, sheetSafeCell } from "../lib/lead-handler.mjs";
-
-const require = createRequire(import.meta.url);
-const { handler: netlifyHandler } = require("../netlify/functions/submit-lead.js");
+import { onRequest, onRequestPost } from "../functions/api/lead.js";
 
 function validBody(overrides = {}) {
   return {
@@ -45,7 +42,6 @@ test("fails closed when no durable owner sink succeeds", async () => {
   const result = await handleLeadRequest({
     request: request(validBody()),
     env: {},
-    clientIp: "203.0.113.10",
     randomUUID: () => "no-sink",
     logger: quietLogger
   });
@@ -62,7 +58,6 @@ test("does not acknowledge the client when the configured owner sink fails", asy
       FROM_EMAIL: "Arroyo Marketing <leads@arroyomarketing.com>",
       RESEND_API_KEY: "test-key"
     },
-    clientIp: "203.0.113.16",
     fetchImpl: async (url, options) => {
       calls.push({ url: String(url), body: JSON.parse(options.body) });
       return response(false, 503);
@@ -89,7 +84,6 @@ test("accepts an optional website and never fetches the submitted URL", async ()
       FROM_EMAIL: "Arroyo Marketing <leads@arroyomarketing.com>",
       RESEND_API_KEY: "test-key"
     },
-    clientIp: "203.0.113.11",
     fetchImpl,
     randomUUID: () => "email-sink",
     logger: quietLogger
@@ -120,7 +114,6 @@ test("uses a saved Google Sheet row as a durable sink and neutralizes formulas",
       GOOGLE_CLIENT_SECRET: "client-secret",
       GOOGLE_REFRESH_TOKEN: "refresh-token"
     },
-    clientIp: "203.0.113.12",
     fetchImpl,
     randomUUID: () => "sheet-sink",
     logger: quietLogger
@@ -164,7 +157,6 @@ test("starts owner delivery and Google authorization concurrently", async () => 
       GOOGLE_CLIENT_SECRET: "client-secret",
       GOOGLE_REFRESH_TOKEN: "refresh-token"
     },
-    clientIp: "203.0.113.19",
     fetchImpl,
     randomUUID: () => "concurrent-sinks",
     logger: quietLogger
@@ -180,7 +172,6 @@ test("rejects oversized bodies and overlong fields", async () => {
   const declaredTooLarge = await handleLeadRequest({
     request: request("x".repeat(MAX_BODY_BYTES + 1), { "Content-Length": String(MAX_BODY_BYTES + 1) }),
     env: {},
-    clientIp: "203.0.113.13",
     randomUUID: () => "declared-large",
     logger: quietLogger
   });
@@ -189,7 +180,6 @@ test("rejects oversized bodies and overlong fields", async () => {
   const streamedTooLarge = await handleLeadRequest({
     request: request("x".repeat(MAX_BODY_BYTES + 1)),
     env: {},
-    clientIp: "203.0.113.15",
     randomUUID: () => "streamed-large",
     logger: quietLogger
   });
@@ -198,7 +188,6 @@ test("rejects oversized bodies and overlong fields", async () => {
   const tooLong = await handleLeadRequest({
     request: request(validBody({ name: "x".repeat(101) })),
     env: {},
-    clientIp: "203.0.113.14",
     randomUUID: () => "long",
     logger: quietLogger
   });
@@ -210,7 +199,6 @@ test("requires a real JSON media type", async () => {
   const jsonp = await handleLeadRequest({
     request: request(validBody(), { "Content-Type": "application/jsonp" }),
     env: {},
-    clientIp: "203.0.113.17",
     randomUUID: () => "jsonp",
     logger: quietLogger
   });
@@ -219,7 +207,6 @@ test("requires a real JSON media type", async () => {
   const structuredJson = await handleLeadRequest({
     request: request(validBody(), { "Content-Type": "application/merge-patch+json" }),
     env: {},
-    clientIp: "203.0.113.18",
     randomUUID: () => "structured-json",
     logger: quietLogger
   });
@@ -233,42 +220,23 @@ test("sheetSafeCell covers common spreadsheet formula prefixes", () => {
   assert.equal(sheetSafeCell("ordinary text"), "ordinary text");
 });
 
-test("Netlify adapter preserves method handling and fail-closed semantics", async () => {
-  const method = await netlifyHandler({ httpMethod: "GET", headers: {} });
-  assert.equal(method.statusCode, 405);
+test("Cloudflare adapter preserves method handling and fail-closed semantics", async () => {
+  const method = onRequest();
+  assert.equal(method.status, 405);
+  assert.equal(method.headers.get("Allow"), "POST");
 
-  const keys = [
-    "OWNER_EMAIL",
-    "FROM_EMAIL",
-    "RESEND_API_KEY",
-    "GOOGLE_SHEET_ID",
-    "GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET",
-    "GOOGLE_REFRESH_TOKEN"
-  ];
-  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-  keys.forEach((key) => delete process.env[key]);
-  try {
-    const missingContentType = await netlifyHandler({
-      httpMethod: "POST",
-      rawUrl: "https://arroyomarketing.com/api/lead",
-      headers: { "x-nf-client-connection-ip": "203.0.113.49" },
+  const missingContentType = await onRequestPost({
+    request: new Request("https://arroyomarketing.com/api/lead", {
+      method: "POST",
       body: JSON.stringify(validBody())
-    });
-    assert.equal(missingContentType.statusCode, 415);
+    }),
+    env: {}
+  });
+  assert.equal(missingContentType.status, 415);
 
-    const result = await netlifyHandler({
-      httpMethod: "POST",
-      rawUrl: "https://arroyomarketing.com/api/lead",
-      headers: { "content-type": "application/json", "x-nf-client-connection-ip": "203.0.113.50" },
-      body: JSON.stringify(validBody())
-    });
-    assert.equal(result.statusCode, 503);
-    assert.equal(JSON.parse(result.body).error, "lead_not_persisted");
-  } finally {
-    for (const [key, value] of Object.entries(previous)) {
-      if (value == null) delete process.env[key];
-      else process.env[key] = value;
-    }
-  }
+  const result = await onRequestPost({ request: request(validBody()), env: {} });
+  const body = await result.json();
+  assert.equal(result.status, 503);
+  assert.equal(body.error, "lead_not_persisted");
+  assert.equal(body.platform, "cloudflare");
 });
