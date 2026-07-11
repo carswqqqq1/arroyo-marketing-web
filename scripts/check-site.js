@@ -114,6 +114,12 @@ if (!/result\.platform\s*===\s*["']netlify["'][\s\S]*?void runBackup\(\)/.test(c
 }
 if (!/event\.preventDefault\(\);\s*resetPreviousResult\(\);/.test(clientScript)) failures.push("script.js: every submission must clear stale success state first");
 if (/params\.get\(["']submitted["']\)/.test(clientScript)) failures.push("script.js: query-string success state must not bypass persistence");
+if (!/function\s+safeSubmissionError\(error\)/.test(clientScript) || !/Number\.isInteger\(error\?\.statusCode\)/.test(clientScript) || !/:\s*safeSubmissionError\(error\)/.test(clientScript)) {
+  failures.push("script.js: network failures must use a public-safe fallback instead of exposing raw browser errors");
+}
+if (/error\.message\s*\|\|\s*["']Submission failed/.test(clientScript) || !/We couldn't send your request right now\./.test(clientScript)) {
+  failures.push("script.js: form error copy must stay actionable and must not expose raw fetch errors");
+}
 
 const notFound = read("404.html");
 if (!/<meta\s+name="robots"\s+content="noindex,follow"/i.test(notFound)) failures.push("404.html: missing noindex directive");

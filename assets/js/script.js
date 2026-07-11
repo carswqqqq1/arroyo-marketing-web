@@ -126,6 +126,7 @@
   const auditStrengths = document.querySelector("[data-audit-strengths]");
   const auditWins = document.querySelector("[data-audit-wins]");
   const submitLabel = form.dataset.submitLabel || "Send Request";
+  const genericSubmissionError = "We couldn't send your request right now. Call (480) 339-9585 or email contact@arroyomarketing.com and Arroyo can still help.";
 
   const hiddenValues = {
     source_page: window.location.pathname,
@@ -214,6 +215,13 @@
       const field = form.querySelector(`[name="${name}"]`);
       if (field) field.value = value;
     });
+  }
+
+  function safeSubmissionError(error) {
+    const apiMessage = Number.isInteger(error?.statusCode) && typeof error.message === "string"
+      ? error.message.trim()
+      : "";
+    return apiMessage || genericSubmissionError;
   }
 
   function showSuccess() {
@@ -325,7 +333,7 @@
       if (statusNode) {
         statusNode.textContent = backupSaved
           ? "Your request was saved through our backup intake. Arroyo will review it manually."
-          : error.message || "Submission failed. Call or email and Arroyo can still help.";
+          : safeSubmissionError(error);
       }
     } finally {
       if (submitButton) {
